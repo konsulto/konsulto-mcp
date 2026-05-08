@@ -142,24 +142,22 @@ The package ships two binaries:
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `No Konsulto credentials found` | No `KONSULTO_TOKEN` env, no `~/.konsulto/credentials` file | Either set the env var or create the file (see Quick start step 2). |
-| `This token is a tenant integration key, not an MCP token` | You used a `kon_live_*` token | Mint a `kon_mcp_*` token under Profile → MCP Tokens. |
-| 401 / "authentication failed" on every tool | Token revoked or expired | Mint a new one and update `~/.konsulto/credentials`. |
-| 403 / "tenant has disabled MCP" | Tenant admin turned MCP off | Ask the admin to flip it back on under Account → API Access. |
-| 403 / "role no longer permits MCP" | Your role lost `mcp:use` | Ask an admin to grant the permission to your role. |
-| `permissions file mode is 644` | Loose perms on credentials file | `chmod 600 ~/.konsulto/credentials` |
+Run `konsulto doctor` first — it walks the credentials file, token validity, and feature/permission checks and prints a one-line fix for the first failure. For the rest:
 
-`konsulto doctor` covers each of these explicitly with a one-line fix.
+| Symptom | Fix |
+|---|---|
+| `No Konsulto credentials found` | Set `KONSULTO_TOKEN` env or create `~/.konsulto/credentials` (see Quick start). |
+| Token rejected as the wrong type | You used a non-MCP token. Mint one under Profile → MCP Tokens. |
+| Authentication errors on every call | Token revoked or expired — mint a fresh one. |
+| Permission errors after working previously | Your role or tenant settings changed. Ask an admin. |
+| Loose-permissions warning at startup | `chmod 600 ~/.konsulto/credentials` |
 
-## Security model
+## Security
 
-- **Three live gates on every API request**: tenant feature flag enabled, your role has `mcp:use`, your token not revoked/expired. Any of them flipping shuts off MCP traffic immediately — no per-token revocation needed.
-- **Token storage**: `~/.konsulto/credentials` (chmod 600) or `KONSULTO_TOKEN` env. Never in `~/.claude/mcp.json`.
-- **First-time-from-new-IP email**: when your token is used from an IP it hasn't been seen on, you get an email so a leak is detectable. The email links to the revoke flow.
-- **Default expiry**: 90 days. Maximum 365.
-- **Permissions are read live**: changing your role propagates within one request — you don't need to re-issue the token.
+- **Treat tokens like passwords.** They carry your role's permissions to anyone who holds them. Don't share or commit them.
+- **Revoke if leaked.** Web app → Profile → MCP Tokens. Revocations take effect on the next request.
+- **Watch your inbox.** Konsulto emails you on suspicious token activity — investigate and revoke if you didn't trigger it.
+- **Verify the package.** Published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) — `npm view @konsulto/mcp` shows the signature.
 
 ## Multi-engagement on one machine
 
