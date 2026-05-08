@@ -1,6 +1,6 @@
 {
   "name": "@konsulto/mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Konsulto MCP server — drive the Konsulto cybersecurity audit platform from MCP-capable clients (Claude Code, etc.)",
   "type": "module",
   "main": "dist/index.js",
