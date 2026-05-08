@@ -40,7 +40,7 @@ Add to `~/.claude/mcp.json`:
   "mcpServers": {
     "konsulto": {
       "command": "npx",
-      "args": ["-y", "@konsulto/mcp"]
+      "args": ["-y", "@konsulto/mcp@latest"]
     }
   }
 }
