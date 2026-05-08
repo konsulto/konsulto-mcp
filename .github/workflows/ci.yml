@@ -1,0 +1,33 @@
+name: CI
+
+# Build + typecheck on every push to main and every PR. Cheap signal that
+# the next tag-triggered publish won't break — the publish workflow runs
+# the same steps but with `npm publish` at the end, so a green CI here
+# means publish will succeed.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- GitHub Actions CI workflow — runs `npm ci && npm run typecheck && npm run build`
+  on every push to `main`/`dev` and every PR.
+- Tag-triggered publish workflow — pushing a `vX.Y.Z` tag publishes
+  `@konsulto/mcp@X.Y.Z` to npm with Sigstore provenance. Refuses to
+  publish if the tag doesn't match `package.json` version.
+
 ## [0.1.0] - 2026-05-08
 
 Initial release.

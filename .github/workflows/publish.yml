@@ -1,0 +1,73 @@
+name: Publish to npm
+
+# Tag-triggered (NOT push-to-main). Reasons:
+#   - npm rejects re-publishing the same version, so push-to-main would
+#     fail on every commit that doesn't bump package.json.
+#   - Tag-driven releases match SemVer expectations: v0.1.0, v0.1.1, etc.
+#   - Gives a moment to review what actually goes out before tagging.
+#
+# Workflow to release:
+#   1. bump package.json version + update CHANGELOG.md
+#   2. commit and push to main
+#   3. git tag vX.Y.Z && git push --tags
+#   4. this workflow runs → @konsulto/mcp@X.Y.Z lands on npm
+#
+# Sigstore provenance: enabled via id-token + --provenance. Downstream
+# users get cryptographic proof the package was built from this exact
+# commit on these GitHub Actions runners. No setup needed beyond the
+# permissions block below.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Avoid concurrent publishes from manual re-tags or branch races.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write     # required for npm provenance signatures
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # Defense against tag/version mismatch — if someone tags v0.2.0 but
+      # package.json still says 0.1.0 (or vice versa), refuse to publish
+      # rather than shipping a wrong-versioned package.
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "package.json version: $PKG_VERSION"
+          echo "tag version:          $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION does not match package.json version $PKG_VERSION. Bump the version, commit, and re-tag."
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
