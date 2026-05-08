@@ -1,0 +1,59 @@
+{
+  "name": "@konsulto/mcp",
+  "version": "0.1.0",
+  "description": "Konsulto MCP server — drive the Konsulto cybersecurity audit platform from MCP-capable clients (Claude Code, etc.)",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "konsulto-mcp": "dist/index.js",
+    "konsulto": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "license": "MIT",
+  "author": "Konsulto",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/konsulto/konsulto-mcp.git"
+  },
+  "homepage": "https://github.com/konsulto/konsulto-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/konsulto/konsulto-mcp/issues"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "axios": "^1.12.2",
+    "tiptap-converter": "^0.2.1",
+    "yaml": "^2.6.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "konsulto",
+    "mcp",
+    "model-context-protocol",
+    "claude-code",
+    "pentest",
+    "security-audit"
+  ]
+}

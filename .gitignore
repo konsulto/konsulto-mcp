@@ -1,0 +1,13 @@
+node_modules
+dist
+*.log
+.env
+.env.*
+.DS_Store
+.idea
+.vscode
+*.tsbuildinfo
+
+# Local agent guidance (not part of the public package).
+CLAUDE.md
+
