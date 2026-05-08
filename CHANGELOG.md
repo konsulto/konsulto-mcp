@@ -9,21 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bin renamed `mcp` → `konsulto-mcp`.** The `mcp` name collided with
+  Homebrew's `python-mcp` package (`/opt/homebrew/bin/mcp`) on machines
+  that have it installed; npx's bin resolution picked the existing PATH
+  entry instead of our package's bin. `konsulto-mcp` is namespace-unique
+  and — since it's the only bin declared — npm/npx auto-selects it.
+  Subcommand dispatch unchanged: `npx @konsulto/mcp <subcommand>` works.
+
+## [0.1.2] - 2026-05-08
+
+### Changed
+
 - **Single bin (`mcp`)** — collapsed `konsulto-mcp` and `konsulto`
-  binaries into the one `mcp` entrypoint. The same binary now dispatches
-  to the helper CLI when called with `init` / `whoami` / `doctor` /
-  `help`, and runs the stdio MCP server otherwise.
+  binaries into one `mcp` entrypoint with subcommand dispatch
+  (init / whoami / doctor / help). Default invocation runs the stdio
+  MCP server.
 - **CLI invocation** is now `npx @konsulto/mcp <subcommand>` instead of
-  `npx -p @konsulto/mcp konsulto <subcommand>`. README + docs updated.
+  the multi-bin `npx -p @konsulto/mcp konsulto <subcommand>`.
 
 ### Fixed
 
 - `npx -y @konsulto/mcp` errored with "could not determine executable to
-  run" because npm 10 stopped auto-resolving a bin matching the
-  unscoped package name when multiple bins are declared. The 0.1.1 fix
-  (adding a `mcp` alias alongside `konsulto-mcp`/`konsulto`) was
-  insufficient — npm 10 still required disambiguation. The single-bin
-  refactor above resolves it cleanly.
+  run" because npm 10 stopped auto-resolving a bin matching the unscoped
+  package name when multiple bins are declared. The 0.1.1 mitigation
+  (adding a `mcp` alias alongside the others) wasn't enough — single-bin
+  refactor was needed.
+- See 0.1.3 for the follow-up `mcp` → `konsulto-mcp` rename to dodge a
+  PATH collision with the Python `mcp` CLI from Homebrew.
 
 ## [0.1.1] - 2026-05-08
 
