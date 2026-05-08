@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@konsulto/mcp@X.Y.Z` to npm with Sigstore provenance. Refuses to
   publish if the tag doesn't match `package.json` version.
 
+### Fixed
+
+- `npx -y @konsulto/mcp` failed with "could not determine executable to
+  run" because npm/npx resolves bins by the unscoped package name (`mcp`)
+  and our `bin` map only had `konsulto-mcp` and `konsulto`. Added a `mcp`
+  bin alias pointing at the same `dist/index.js`; existing `konsulto-mcp`
+  and `konsulto` binaries stay unchanged.
+
+### Security
+
+- Tightened README **Security** and **Troubleshooting** sections to
+  remove attacker-recon material (exact auth-gate names, storage paths,
+  anomaly-detection heuristics, feature-flag wording). User-facing
+  actions remain.
+
 ## [0.1.0] - 2026-05-08
 
 Initial release.

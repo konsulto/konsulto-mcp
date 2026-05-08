@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
+    "mcp": "dist/index.js",
     "konsulto-mcp": "dist/index.js",
     "konsulto": "dist/cli.js"
   },
