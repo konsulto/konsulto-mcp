@@ -8,17 +8,27 @@ import { ApiClient } from './auth/api-client.js';
 import { CredentialError, loadCredentials } from './auth/token-loader.js';
 import { loadWorkspaceConfig } from './context/workspace-config.js';
 
-// Helper CLI installed alongside the MCP server. Three jobs:
+// Helper CLI dispatched from the same `mcp` binary as the stdio MCP
+// server. Three subcommands:
 //
-//   konsulto init     — interactive `.konsulto.yml` writer for the current dir
-//   konsulto whoami   — verify token, show identity + permissions + expiry
-//   konsulto doctor   — sanity-check creds file mode, token, and reachability
+//   npx @konsulto/mcp init     — interactive .konsulto.yml writer
+//   npx @konsulto/mcp whoami   — verify token, show identity + permissions
+//   npx @konsulto/mcp doctor   — sanity-check creds, token, reachability
 //
-// The user invokes this directly. Output goes to stdout (this is NOT the
-// MCP transport, which lives at the konsulto-mcp binary). Diagnostics use
-// console.log/error freely.
+// Dispatch happens in index.ts when argv[2] is in CLI_SUBCOMMANDS. When
+// these run, stdout is the user's terminal (NOT the MCP transport) so
+// console.log is safe.
 
-async function main(): Promise<void> {
+export const CLI_SUBCOMMANDS = new Set([
+  'init',
+  'whoami',
+  'doctor',
+  'help',
+  '-h',
+  '--help',
+]);
+
+export async function runCli(): Promise<void> {
   const [, , subcommand, ...args] = process.argv;
   switch (subcommand) {
     case 'init':
@@ -46,15 +56,14 @@ async function main(): Promise<void> {
 function printHelp(): void {
   console.log(
     [
-      'konsulto — helper CLI for the Konsulto MCP server',
+      '@konsulto/mcp — Konsulto MCP server + helper CLI',
       '',
-      'Subcommands:',
-      '  init          Pin the current folder to a Konsulto audit (.konsulto.yml)',
-      '  whoami        Show identity, permissions, token expiry, active audit',
-      '  doctor        Verify credentials file, token validity, network reachability',
+      'Default (no args): runs the stdio MCP server (spawned by Claude Code).',
       '',
-      'Note: the MCP server itself runs as `konsulto-mcp` (via Claude Code).',
-      'This `konsulto` CLI is for interactive setup and troubleshooting only.',
+      'Helper subcommands (run interactively):',
+      '  npx @konsulto/mcp init     Pin the current folder to a Konsulto audit',
+      '  npx @konsulto/mcp whoami   Show identity, permissions, active audit',
+      '  npx @konsulto/mcp doctor   Verify credentials, token, MCP feature, network',
     ].join('\n'),
   );
 }
@@ -96,7 +105,7 @@ async function runInit(): Promise<void> {
 
   if (audits.length === 0) {
     console.error(
-      'No audits found for this user. Create or join an audit first, then run konsulto init again.',
+      'No audits found for this user. Create or join an audit first, then run npx @konsulto/mcp init again.',
     );
     process.exit(1);
   }
@@ -294,7 +303,5 @@ function groupBy<T>(arr: T[], key: (item: T) => string): Record<string, T[]> {
   return out;
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+// (no top-level invocation — index.ts dispatches to runCli when argv[2]
+// is in CLI_SUBCOMMANDS).

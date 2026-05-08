@@ -5,13 +5,29 @@ import { loadCredentials, CredentialError } from './auth/token-loader.js';
 import { SessionState } from './context/session-state.js';
 import { loadWorkspaceConfig } from './context/workspace-config.js';
 import { buildServer } from './server.js';
+import { CLI_SUBCOMMANDS, runCli } from './cli.js';
 
-// Stdio entrypoint. Spawned by Claude Code (or any MCP-capable client) via
-// `npx -y @konsulto/mcp` from ~/.claude/mcp.json. NEVER use console.log
-// here — stdout is the MCP transport. All diagnostics go to stderr; the
-// SDK's transport ignores it.
+// Single-bin entrypoint. Two modes:
+//   1. No args (or unrecognized first arg) → run as stdio MCP server.
+//      Spawned by Claude Code via `npx -y @konsulto/mcp` from
+//      ~/.claude/mcp.json. NEVER use console.log here — stdout is the
+//      MCP transport. Diagnostics go to stderr.
+//   2. First arg in CLI_SUBCOMMANDS (init / whoami / doctor / help) →
+//      delegate to runCli(). stdout is the user's terminal in this mode.
+//
+// Single bin (`mcp`) by design: npm 10's npx no longer auto-resolves a
+// matching-unscoped-name bin when multiple bins are declared, so
+// `npx @konsulto/mcp` errors with "could not determine executable to run"
+// the moment we have more than one bin entry. Subcommand dispatch keeps
+// the user-facing UX simple while collapsing to a single bin.
 
 async function main(): Promise<void> {
+  const subcommand = process.argv[2];
+  if (subcommand && CLI_SUBCOMMANDS.has(subcommand)) {
+    await runCli();
+    return;
+  }
+
   let creds;
   try {
     creds = loadCredentials();

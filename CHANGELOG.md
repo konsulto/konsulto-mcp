@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Single bin (`mcp`)** — collapsed `konsulto-mcp` and `konsulto`
+  binaries into the one `mcp` entrypoint. The same binary now dispatches
+  to the helper CLI when called with `init` / `whoami` / `doctor` /
+  `help`, and runs the stdio MCP server otherwise.
+- **CLI invocation** is now `npx @konsulto/mcp <subcommand>` instead of
+  `npx -p @konsulto/mcp konsulto <subcommand>`. README + docs updated.
+
+### Fixed
+
+- `npx -y @konsulto/mcp` errored with "could not determine executable to
+  run" because npm 10 stopped auto-resolving a bin matching the
+  unscoped package name when multiple bins are declared. The 0.1.1 fix
+  (adding a `mcp` alias alongside `konsulto-mcp`/`konsulto`) was
+  insufficient — npm 10 still required disambiguation. The single-bin
+  refactor above resolves it cleanly.
+
+## [0.1.1] - 2026-05-08
+
 ### Added
 
 - GitHub Actions CI workflow — runs `npm ci && npm run typecheck && npm run build`
@@ -14,14 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tag-triggered publish workflow — pushing a `vX.Y.Z` tag publishes
   `@konsulto/mcp@X.Y.Z` to npm with Sigstore provenance. Refuses to
   publish if the tag doesn't match `package.json` version.
-
-### Fixed
-
-- `npx -y @konsulto/mcp` failed with "could not determine executable to
-  run" because npm/npx resolves bins by the unscoped package name (`mcp`)
-  and our `bin` map only had `konsulto-mcp` and `konsulto`. Added a `mcp`
-  bin alias pointing at the same `dist/index.js`; existing `konsulto-mcp`
-  and `konsulto` binaries stay unchanged.
+- `mcp` bin alias alongside `konsulto-mcp` and `konsulto` (turned out
+  not to fully fix `npx @konsulto/mcp`; see 0.1.2 Unreleased fix).
 
 ### Security
 

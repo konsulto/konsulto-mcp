@@ -132,17 +132,17 @@ Every tool is prefixed `konsulto_*` so it doesn't collide with other MCPs (Burp,
 
 ## Helper CLI
 
-The package ships two binaries:
+The same `npx @konsulto/mcp` command runs as the stdio MCP server when
+called with no arguments (what Claude Code does), and as an interactive
+helper when called with a subcommand:
 
-- `konsulto-mcp` — the stdio MCP server. Claude Code spawns this. You don't run it directly.
-- `konsulto` — interactive helper:
-  - `konsulto init` — write `.konsulto.yml` for the current folder
-  - `konsulto whoami` — verify token, show identity + permissions + active audit
-  - `konsulto doctor` — sanity-check creds file mode, token validity, network reachability, MCP feature enabled, role has `mcp:use`
+- `npx @konsulto/mcp init` — write `.konsulto.yml` for the current folder
+- `npx @konsulto/mcp whoami` — verify token, show identity + permissions
+- `npx @konsulto/mcp doctor` — sanity-check credentials, token, reachability, and configuration
 
 ## Troubleshooting
 
-Run `konsulto doctor` first — it walks the credentials file, token validity, and feature/permission checks and prints a one-line fix for the first failure. For the rest:
+Run `npx @konsulto/mcp doctor` first — it prints a one-line fix for the first failure. For the rest:
 
 | Symptom | Fix |
 |---|---|
