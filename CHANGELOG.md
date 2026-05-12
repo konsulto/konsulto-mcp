@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `konsulto_audit_summary` tool — aggregate finding counts for an audit
-  (total, by severity, by status, last 7d / 30d, last-finding timestamp).
-  Orientation tool meant to pair with `konsulto_whoami` at session start.
-  Backed by a new `GET /audits/:id/summary` endpoint on `konsulto-backend`
-  using a single `$facet` aggregation, gated by `findings:read`.
-
 ### Changed
 
 - **Bin renamed `mcp` → `konsulto-mcp`.** The `mcp` name collided with
@@ -23,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entry instead of our package's bin. `konsulto-mcp` is namespace-unique
   and — since it's the only bin declared — npm/npx auto-selects it.
   Subcommand dispatch unchanged: `npx @konsulto/mcp <subcommand>` works.
+
+## [0.2.0] - 2026-05-12
+
+### Added
+
+- `konsulto_audit_summary` tool — aggregate finding counts for an audit
+  (total, by severity, by status, last 7d / 30d, last-finding timestamp).
+  Orientation tool meant to pair with `konsulto_whoami` at session start.
+  Backed by a new `GET /audits/:id/summary` endpoint on `konsulto-backend`
+  using a single `$facet` aggregation, gated by `findings:read`.
 
 ## [0.1.2] - 2026-05-08
 
