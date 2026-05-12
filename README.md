@@ -89,6 +89,7 @@ Every tool is prefixed `konsulto_*` so it doesn't collide with other MCPs (Burp,
 | `konsulto_list_my_audits` | List audits you're a member of. |
 | `konsulto_set_active_audit` | Pin one audit for the rest of the session (fuzzy match by name). |
 | `konsulto_get_audit_context` | One-shot orientation — name, status, scope/asset counts, severity rollup, team. |
+| `konsulto_audit_summary` | Live finding counts for an audit: total, by severity, by status, recent 7d/30d, last-finding timestamp. |
 
 ### Templates
 

@@ -60,7 +60,7 @@ export function buildServer(opts: {
 
   const server = new McpServer({
     name: 'konsulto',
-    version: '0.1.0',
+    version: '0.2.0',
   });
 
   // ---------------------------------------------------------------------------
@@ -235,6 +235,32 @@ export function buildServer(opts: {
             tags: a.tags ?? [],
           },
           webUrl: client.webUrl(`/audits/${a._id ?? a.id}`),
+        });
+      } catch (err) {
+        return errResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    'konsulto_audit_summary',
+    'Aggregate finding counts for an audit: total, breakdown by severity ' +
+      '(critical/high/medium/low/informative), breakdown by status ' +
+      '(open/accepted/mitigated/closed/rejected), recent activity (last 7d ' +
+      'and 30d), and last-finding timestamp. Use this for "what is the ' +
+      'state of this audit" orientation before search_findings or compose. ' +
+      'Prefer over get_audit_context when you want live counts rather than ' +
+      'audit metadata. Defaults to the active audit.',
+    {
+      audit: z.string().optional().describe('Audit ID. Defaults to active audit.'),
+    },
+    async ({ audit }) => {
+      try {
+        const auditId = state.resolveAuditId(audit);
+        const summary = (await client.get<any>(`/audits/${auditId}/summary`)) as any;
+        return ok({
+          ...summary,
+          webUrl: client.webUrl(`/audits/${auditId}`),
         });
       } catch (err) {
         return errResult(err);
