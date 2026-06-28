@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-28
+
 ### Fixed
 
 - **`konsulto_attach_evidence` upload rejected with "purpose must be one of
@@ -160,5 +162,6 @@ Initial release.
   is detectable.
 - Default token expiry: 90 days. Maximum 365.
 
-[Unreleased]: https://github.com/konsulto/konsulto-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/konsulto/konsulto-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/konsulto/konsulto-mcp/releases/tag/v0.3.0
 [0.1.0]: https://github.com/konsulto/konsulto-mcp/releases/tag/v0.1.0
