@@ -40,7 +40,10 @@ const SECTION_ALIASES: Record<string, string> = {
 };
 
 function normalizeSection(input: string): string {
-  return SECTION_ALIASES[input.toLowerCase().trim()] ?? input.trim();
+  const norm = input.toLowerCase().trim();
+  // Canonical aliases win; otherwise return the normalized (lowercased) form so
+  // custom layout-section keys match the backend's normalized heading text.
+  return SECTION_ALIASES[norm] ?? norm;
 }
 
 const SECTION_DESCRIPTION =
@@ -436,12 +439,14 @@ export function buildServer(opts: {
 
   server.tool(
     'konsulto_compose_finding',
-    'Create a brand-new finding from structured fields + optional template + ' +
-      'optional evidence. The backend builds the Tiptap body from a layout — ' +
-      'NEVER pass Tiptap JSON as a field. Use plain prose for summary/impact/' +
-      'remediation, an array of plain strings for stepsToReproduce. Evidence ' +
-      'is grafted into the body at the requested section ("auto" walks ' +
-      'poc → description → impact → remediation → end).',
+    'Create a brand-new finding with a fully-formatted body. Author each ' +
+      'section as Markdown in `sections` — the backend converts it to rich ' +
+      'Tiptap (code blocks, tables, lists, links) so the finding looks like ' +
+      'every other one on the audit. Call konsulto_get_finding_format FIRST to ' +
+      'learn the exact sections + markdown rules for this audit. Do NOT pass ' +
+      'Tiptap JSON, and do NOT repeat the section heading inside the markdown ' +
+      '(the backend emits it). Evidence is grafted at the requested section ' +
+      '("auto" walks poc → description → impact → remediation → end).',
     {
       audit: z.string().optional().describe('Audit ID. Defaults to active audit.'),
       templateId: z
@@ -451,6 +456,16 @@ export function buildServer(opts: {
       severity: z
         .enum(['critical', 'high', 'medium', 'low', 'informative'])
         .optional(),
+      title: z.string().optional().describe('Finding title.'),
+      sections: z
+        .record(z.string())
+        .optional()
+        .describe(
+          'Per-section GFM Markdown. Keys: description, poc, impact, ' +
+            'remediation, references (aliases like "recommendation" accepted), ' +
+            'plus any custom section from get_finding_format. Each value is ' +
+            'markdown WITHOUT its own heading. This is the preferred input.',
+        ),
       fields: z
         .object({
           title: z.string().optional(),
@@ -461,7 +476,8 @@ export function buildServer(opts: {
           references: z.array(z.any()).optional(),
         })
         .passthrough()
-        .describe('Fields to fill. Open-ended; template slot names go here too.'),
+        .optional()
+        .describe('DEPRECATED legacy flat prose. Prefer `sections` markdown.'),
       evidence: z
         .array(
           z.object({
@@ -475,14 +491,25 @@ export function buildServer(opts: {
         .optional(),
       assets: z.array(z.any()).optional(),
     },
-    async ({ audit, templateId, severity, fields, evidence, assets }) => {
+    async ({ audit, templateId, severity, title, sections, fields, evidence, assets }) => {
       try {
         const auditId = state.resolveAuditId(audit);
+        // Normalize section keys (recommendation → remediation, etc.) so the
+        // LLM can use natural-language section names. Mirrors the backend's
+        // alias map; unknown keys fall through for custom layout sections.
+        const normSections = sections
+          ? Object.fromEntries(
+              Object.entries(sections).map(([k, v]) => [normalizeSection(k), v]),
+            )
+          : undefined;
+        const mergedFields: Record<string, any> = { ...(fields ?? {}) };
+        if (title) mergedFields.title = title;
         const body = {
           auditId,
           templateId,
           severity,
-          fields: fields ?? {},
+          sections: normSections,
+          fields: mergedFields,
           evidence: evidence ?? [],
           assets: assets ?? [],
         };
@@ -496,6 +523,37 @@ export function buildServer(opts: {
           },
           webUrl: client.webUrl(`/audits/${auditId}/findings/${created._id ?? created.id}`),
         });
+      } catch (err) {
+        return errResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    'konsulto_get_finding_format',
+    'Return the section structure + markdown authoring rules for composing a ' +
+      'finding in this audit. Call this BEFORE konsulto_compose_finding so the ' +
+      'body you author is fully formatted (code blocks, tables, lists, links) ' +
+      'and matches every other finding. Pass templateId to get that ' +
+      "template's sections plus a markdown starter to adapt.",
+    {
+      audit: z.string().optional().describe('Audit ID. Defaults to active audit.'),
+      templateId: z
+        .string()
+        .optional()
+        .describe('Template whose sections + markdown starter to return.'),
+      layoutId: z.string().optional().describe('Explicit layout override.'),
+    },
+    async ({ audit, templateId, layoutId }) => {
+      try {
+        const auditId = state.resolveAuditId(audit);
+        const params: Record<string, string> = { auditId };
+        if (templateId) params.templateId = templateId;
+        if (layoutId) params.layoutId = layoutId;
+        const data = (await client.get<any>('/findings/compose-format', {
+          params,
+        })) as any;
+        return ok(data);
       } catch (err) {
         return errResult(err);
       }
@@ -649,13 +707,19 @@ export function buildServer(opts: {
           mimeType = guessMimeFromName(resolvedName);
         }
 
-        // 1) Get presigned URL
+        // 1) Get presigned URL.
+        // `purpose` is an API enum — must be 'evidence.attachment' or
+        // 'editor.derived', NOT the `kind` render hint. This tool is the
+        // user-facing "attach a file to a finding" flow, so it always creates
+        // an evidence attachment. Hardcoded (not a tool param) on purpose:
+        // editor.derived is for AI-editor artifacts, a flow the MCP doesn't
+        // expose. `kind` stays a separate rendering hint (filename + echo).
         const presign = (await client.post<any>('/attachments/presign-upload', {
           filename: resolvedName,
           mimeType,
           size: bytes.byteLength,
           auditId,
-          purpose: kind ?? 'evidence',
+          purpose: 'evidence.attachment',
         })) as any;
 
         // 2) PUT to S3

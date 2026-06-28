@@ -109,7 +109,8 @@ Every tool is prefixed `konsulto_*` so it doesn't collide with other MCPs (Burp,
 
 | Tool | What it does |
 |---|---|
-| `konsulto_compose_finding` | Create from structured fields + optional template + evidence. Backend builds the Tiptap body. |
+| `konsulto_get_finding_format` | Return the section structure + markdown authoring rules (and an optional template starter) for composing a finding in this audit. Call before `compose_finding`. |
+| `konsulto_compose_finding` | Create a finding with a fully-formatted body. Author each section as markdown in `sections`; the backend converts it to rich Tiptap (code blocks, tables, lists, links) + grafts evidence. |
 | `konsulto_update_finding` | Change scalar fields (title, severity, status, taxonomy, assets). |
 | `konsulto_bulk_update_status` | Mass status change. Supports `dryRun: true` for preview. |
 | `konsulto_append_to_section` | Add markdown prose to a section. Section names accept aliases (recommendations, mitigation, fix, summary, etc.) — they normalize to canonical keys server-side. |

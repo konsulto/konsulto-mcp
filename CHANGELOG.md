@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`konsulto_attach_evidence` upload rejected with "purpose must be one of
+  evidence.attachment, editor.derived".** The presign-upload call sent
+  `purpose: kind ?? 'evidence'`, conflating the API's `purpose` enum with the
+  `kind` render hint — so any `kind` (e.g. `screenshot`) or the `'evidence'`
+  default failed the backend's `@IsIn` validation and no evidence was created.
+  Now sends the constant `purpose: 'evidence.attachment'` (this tool is the
+  evidence flow); `kind` remains an independent rendering hint. Affects all
+  three input modes (filePath / content / contentBase64).
+
+### Added
+
+- **`konsulto_get_finding_format` tool.** Returns the ordered section
+  structure + markdown authoring rules for an audit (and an optional
+  template "starter" markdown to adapt). Call it before
+  `konsulto_compose_finding` so the body matches every other finding.
+
 ### Changed
+
+- **`konsulto_compose_finding` now takes per-section markdown.** New
+  `sections` map (`description`/`poc`/`impact`/`remediation`/… → GFM
+  markdown) + `title`; the backend converts markdown to fully-rich Tiptap
+  (code blocks, tables, lists, links) instead of the old flat
+  plain-paragraph fields. The legacy `fields` input is still accepted
+  (now also markdown-parsed) but deprecated. Section keys accept the same
+  aliases as the section-edit tools. Non-breaking: existing `fields`
+  callers keep working.
 
 - **Bin renamed `mcp` → `konsulto-mcp`.** The `mcp` name collided with
   Homebrew's `python-mcp` package (`/opt/homebrew/bin/mcp`) on machines
