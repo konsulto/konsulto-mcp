@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-29
+
 ### Added
 
 - **`login` CLI subcommand.** `npx @konsulto/mcp login <kon_mcp_token>
@@ -187,6 +189,7 @@ Initial release.
   is detectable.
 - Default token expiry: 90 days. Maximum 365.
 
-[Unreleased]: https://github.com/konsulto/konsulto-mcp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/konsulto/konsulto-mcp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/konsulto/konsulto-mcp/releases/tag/v0.4.0
 [0.3.0]: https://github.com/konsulto/konsulto-mcp/releases/tag/v0.3.0
 [0.1.0]: https://github.com/konsulto/konsulto-mcp/releases/tag/v0.1.0
