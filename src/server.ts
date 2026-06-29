@@ -50,6 +50,17 @@ const SECTION_DESCRIPTION =
   'Section name. Canonical: description, poc, impact, remediation, references. ' +
   'Aliases accepted: summary, recommendations, mitigation, fix, steps to reproduce, etc.';
 
+// Finding statuses are tenant-customizable (rename/reorder/archive/add). The
+// agent must use a real status KEY from this tenant's catalog — call
+// konsulto_list_finding_statuses to discover them. Built-ins shown as examples;
+// they are NOT exhaustive. The backend validates and returns an actionable
+// error for an unknown key, so we keep this a free-form string (the same
+// discovery-tool pattern as konsulto_get_finding_format).
+const STATUS_KEY_DESCRIPTION =
+  'Tenant status KEY. Tenants customize statuses — call ' +
+  'konsulto_list_finding_statuses for valid keys. Built-in examples: ' +
+  'open, accepted, mitigated, closed, rejected.';
+
 // Build and configure the MCP server. Tools register here. The transport
 // (stdio) is bound in index.ts so this module can be imported and
 // inspected by the helper CLI without spawning a server.
@@ -109,27 +120,35 @@ export function buildServer(opts: {
 
   server.tool(
     'konsulto_list_my_audits',
-    'List audits this user is a team member of. Use to find the audit ID ' +
-      'you want to work in. Filter by status (active/draft/completed/archived).',
+    'List audits to find the audit ID you want to work in. By default (scope ' +
+      '"mine") returns only audits you are attached to — creator, lead, ' +
+      'reviewer, or contributor. Pass scope "all" to list every audit in the ' +
+      'tenant you can read. Filter by status (active/draft/completed/archived).',
     {
+      scope: z
+        .enum(['mine', 'all'])
+        .default('mine')
+        .describe(
+          '"mine" (default) = audits you are creator/lead/reviewer/contributor ' +
+            'of. "all" = every audit in the tenant you have read access to.',
+        ),
       status: z
         .enum(['active', 'draft', 'completed', 'archived'])
         .optional()
         .describe('Filter to a single status. Omit to return all.'),
       limit: z.number().int().min(1).max(100).default(25).optional(),
     },
-    async ({ status, limit }) => {
+    async ({ scope, status, limit }) => {
       try {
-        // memberOnly=true asks the backend to restrict to audits where the
-        // caller is creator, lead, or on the team. Admins (full-access
-        // roles) still see everything they're connected to — they just
-        // don't see audits they're not part of, which is what the user
-        // expects from a tool literally named "list MY audits".
+        // scope "mine" → memberOnly=true: backend restricts to audits where the
+        // caller is creator, lead auditor, or a team member (any role). scope
+        // "all" omits memberOnly, so the backend returns every tenant audit the
+        // caller can read (gated server-side by the audits:read permission).
         const params: Record<string, string> = {
           page: '1',
           limit: String(limit ?? 25),
-          memberOnly: 'true',
         };
+        if ((scope ?? 'mine') === 'mine') params.memberOnly = 'true';
         if (status) params.status = status;
         const data = (await client.get<any>('/audits', { params })) as any;
         const items = data?.items ?? data?.data ?? data ?? [];
@@ -249,7 +268,8 @@ export function buildServer(opts: {
     'konsulto_audit_summary',
     'Aggregate finding counts for an audit: total, breakdown by severity ' +
       '(critical/high/medium/low/informative), breakdown by status ' +
-      '(open/accepted/mitigated/closed/rejected), recent activity (last 7d ' +
+      '(by the tenant\'s status keys — open/accepted/mitigated/closed/rejected ' +
+      'are the built-ins, but tenants customize these), recent activity (last 7d ' +
       'and 30d), and last-finding timestamp. Use this for "what is the ' +
       'state of this audit" orientation before search_findings or compose. ' +
       'Prefer over get_audit_context when you want live counts rather than ' +
@@ -324,8 +344,9 @@ export function buildServer(opts: {
         .enum(['critical', 'high', 'medium', 'low', 'informative'])
         .optional(),
       status: z
-        .enum(['open', 'accepted', 'mitigated', 'closed', 'rejected'])
-        .optional(),
+        .string()
+        .optional()
+        .describe(`Filter by status. ${STATUS_KEY_DESCRIPTION}`),
       limit: z.number().int().min(1).max(100).default(25).optional(),
     },
     async ({ audit, q, severity, status, limit }) => {
@@ -561,6 +582,36 @@ export function buildServer(opts: {
   );
 
   server.tool(
+    'konsulto_list_finding_statuses',
+    'List this tenant\'s finding statuses. Statuses are tenant-customizable ' +
+      '(renamed/added/archived), so call this BEFORE setting or filtering a ' +
+      'finding status to learn the valid keys. Use the `key`; `semantic` tells ' +
+      'you what it means (active/accepted/mitigated/resolved/dismissed) so you ' +
+      'can pick the right one regardless of the tenant\'s label.',
+    {},
+    async () => {
+      try {
+        const data = (await client.get<any>('/finding-statuses')) as any;
+        const items = (data?.data ?? data ?? []) as any[];
+        const statuses = items
+          // Archived statuses can't be assigned — omit from the assignable list.
+          .filter((s) => !s.archived)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((s) => ({
+            key: s.key,
+            label: s.labelI18n?.en ?? Object.values(s.labelI18n ?? {})[0] ?? s.key,
+            semantic: s.semantic,
+            isDefault: !!s.isDefault,
+            system: !!s.system,
+          }));
+        return ok({ statuses });
+      } catch (err) {
+        return errResult(err);
+      }
+    },
+  );
+
+  server.tool(
     'konsulto_update_finding',
     'Update scalar fields on an existing finding. Use this for changing ' +
       'title, severity, status, taxonomy, or assets — NOT for editing the ' +
@@ -574,9 +625,7 @@ export function buildServer(opts: {
           severity: z
             .enum(['critical', 'high', 'medium', 'low', 'informative'])
             .optional(),
-          status: z
-            .enum(['open', 'accepted', 'mitigated', 'closed', 'rejected'])
-            .optional(),
+          status: z.string().optional().describe(STATUS_KEY_DESCRIPTION),
           taxonomy: z.any().optional(),
           assets: z.array(z.any()).optional(),
         })
@@ -609,7 +658,7 @@ export function buildServer(opts: {
       'Set dryRun: true first to preview affected findings before committing.',
     {
       findingIds: z.array(z.string()).min(1),
-      status: z.enum(['open', 'accepted', 'mitigated', 'closed', 'rejected']),
+      status: z.string().describe(STATUS_KEY_DESCRIPTION),
       dryRun: z.boolean().optional().default(false),
     },
     async ({ findingIds, status, dryRun }) => {

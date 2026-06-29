@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`konsulto_list_finding_statuses` tool.** Lists the tenant's finding-status
+  catalog (key, label, semantic, isDefault, system; archived omitted) so the
+  agent uses real status keys. Statuses are tenant-customizable.
+- **`konsulto_list_my_audits` gains a `scope` filter** (`mine` default | `all`).
+  `mine` lists audits you are attached to (creator / lead / reviewer /
+  contributor); `all` lists every audit in the tenant you can read. Default
+  behaviour is unchanged.
+
+### Changed
+
+- **Finding status inputs are no longer a hardcoded enum.** `update_finding`,
+  `bulk_update_status`, and `search_findings` now take a free-form status
+  **key** (validated server-side against the tenant's catalog), so agents can
+  set/filter custom statuses like "Partly Fixed". Built-in keys
+  (open/accepted/mitigated/closed/rejected) still work. Pair with
+  `konsulto_list_finding_statuses` to discover valid keys.
+
 ## [0.3.0] - 2026-06-28
 
 ### Fixed
