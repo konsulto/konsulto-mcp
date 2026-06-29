@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
@@ -9,8 +9,9 @@ import { CredentialError, loadCredentials } from './auth/token-loader.js';
 import { loadWorkspaceConfig } from './context/workspace-config.js';
 
 // Helper CLI dispatched from the same `mcp` binary as the stdio MCP
-// server. Three subcommands:
+// server. Subcommands:
 //
+//   npx @konsulto/mcp login    — save token to ~/.konsulto/credentials
 //   npx @konsulto/mcp init     — interactive .konsulto.yml writer
 //   npx @konsulto/mcp whoami   — verify token, show identity + permissions
 //   npx @konsulto/mcp doctor   — sanity-check creds, token, reachability
@@ -20,6 +21,7 @@ import { loadWorkspaceConfig } from './context/workspace-config.js';
 // console.log is safe.
 
 export const CLI_SUBCOMMANDS = new Set([
+  'login',
   'init',
   'whoami',
   'doctor',
@@ -31,6 +33,9 @@ export const CLI_SUBCOMMANDS = new Set([
 export async function runCli(): Promise<void> {
   const [, , subcommand, ...args] = process.argv;
   switch (subcommand) {
+    case 'login':
+      await runLogin(args);
+      break;
     case 'init':
       await runInit();
       break;
@@ -60,12 +65,106 @@ function printHelp(): void {
       '',
       'Default (no args): runs the stdio MCP server (spawned by Claude Code).',
       '',
-      'Helper subcommands (run interactively):',
+      'Helper subcommands:',
+      '  npx @konsulto/mcp login <token> [--endpoint <url>]',
+      '                             Save your MCP token to ~/.konsulto/credentials',
       '  npx @konsulto/mcp init     Pin the current folder to a Konsulto audit',
       '  npx @konsulto/mcp whoami   Show identity, permissions, active audit',
       '  npx @konsulto/mcp doctor   Verify credentials, token, MCP feature, network',
     ].join('\n'),
   );
+}
+
+// ---------------------------------------------------------------------------
+// login
+// ---------------------------------------------------------------------------
+
+// Non-interactive credentials writer so users connect with one copy-pasted
+// line on any OS — no shell-specific mkdir/here-doc/chmod. Mirrors the token
+// rules and 0600/0700 modes that token-loader/doctor expect.
+const MCP_PREFIX = 'kon_mcp_';
+const TENANT_PREFIX = 'kon_live_';
+const DEFAULT_ENDPOINT = 'https://api.konsulto.io';
+
+async function runLogin(args: string[]): Promise<void> {
+  let token: string | undefined;
+  let endpoint: string | undefined;
+  let force = false;
+
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--endpoint' || a === '-e') {
+      endpoint = args[++i];
+    } else if (a.startsWith('--endpoint=')) {
+      endpoint = a.slice('--endpoint='.length);
+    } else if (a === '--force' || a === '-f') {
+      force = true;
+    } else if (!a.startsWith('-') && token === undefined) {
+      token = a;
+    }
+  }
+
+  token = token?.trim();
+  if (!token) {
+    console.error(
+      'Usage: npx @konsulto/mcp login <kon_mcp_token> [--endpoint <url>] [--force]',
+    );
+    process.exit(2);
+  }
+
+  // Same guardrails as token-loader's assertMcpToken, surfaced before we
+  // write so a wrong token never lands on disk.
+  if (token.startsWith(TENANT_PREFIX)) {
+    console.error(
+      `This token (${token.slice(0, 12)}…) is a tenant integration key, not an ` +
+        'MCP token. Mint an MCP token under Profile → MCP Tokens in the Konsulto web app.',
+    );
+    process.exit(1);
+  }
+  if (!token.startsWith(MCP_PREFIX)) {
+    console.error(
+      `Token does not look like a Konsulto MCP token (expected prefix ${MCP_PREFIX}). ` +
+        'Mint one under Profile → MCP Tokens in the Konsulto web app.',
+    );
+    process.exit(1);
+  }
+
+  const dir = join(homedir(), '.konsulto');
+  const filePath = join(dir, 'credentials');
+
+  if (existsSync(filePath) && !force) {
+    console.error(
+      `${filePath} already exists. Re-run with --force to overwrite it, or edit the file by hand.`,
+    );
+    process.exit(1);
+  }
+
+  // Endpoint is written only when overriding the default, keeping the file
+  // minimal for the common shared-API case.
+  const doc: Record<string, string> = { token };
+  const resolvedEndpoint = endpoint?.trim();
+  if (resolvedEndpoint && resolvedEndpoint !== DEFAULT_ENDPOINT) {
+    doc.endpoint = resolvedEndpoint;
+  }
+
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    writeFileSync(filePath, stringifyYaml(doc), { mode: 0o600 });
+    // writeFileSync's mode is masked by umask and only applies on creation,
+    // so chmod explicitly — this also tightens an overwritten loose-mode file.
+    chmodSync(filePath, 0o600);
+  } catch (err) {
+    console.error(
+      `Could not write ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    process.exit(1);
+  }
+
+  console.log(`Saved ${maskToken(token)} to ${filePath}`);
+  console.log(`Endpoint: ${resolvedEndpoint ?? `${DEFAULT_ENDPOINT} (default)`}`);
+  console.log('\nNext: add the Konsulto MCP server to your AI tool, then run');
+  console.log('  npx @konsulto/mcp whoami');
+  console.log('to confirm the connection.');
 }
 
 // ---------------------------------------------------------------------------

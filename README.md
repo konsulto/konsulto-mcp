@@ -20,14 +20,15 @@ Sign in → **Profile → MCP Tokens** → **New MCP token**. Copy the `kon_mcp_
 
 ### 2. Save the token locally
 
+One command, same on macOS, Linux, and Windows:
+
 ```bash
-mkdir -p ~/.konsulto && chmod 700 ~/.konsulto
-cat > ~/.konsulto/credentials <<EOF
-token: kon_mcp_REPLACE_WITH_YOUR_TOKEN
-endpoint: https://api.konsulto.io
-EOF
-chmod 600 ~/.konsulto/credentials
+npx -y @konsulto/mcp@latest login kon_mcp_REPLACE_WITH_YOUR_TOKEN
 ```
+
+This writes `~/.konsulto/credentials` (directory `0700`, file `0600`). Add
+`--endpoint https://your-tenant.api.konsulto.io` if you're on a dedicated stack,
+and `--force` to overwrite an existing file.
 
 Or use the `KONSULTO_TOKEN` env var if you'd rather not write a file.
 
@@ -138,6 +139,7 @@ The same `npx @konsulto/mcp` command runs as the stdio MCP server when
 called with no arguments (what Claude Code does), and as an interactive
 helper when called with a subcommand:
 
+- `npx @konsulto/mcp login <token>` — save your token to `~/.konsulto/credentials` (`--endpoint <url>`, `--force`)
 - `npx @konsulto/mcp init` — write `.konsulto.yml` for the current folder
 - `npx @konsulto/mcp whoami` — verify token, show identity + permissions
 - `npx @konsulto/mcp doctor` — sanity-check credentials, token, reachability, and configuration

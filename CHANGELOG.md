@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`login` CLI subcommand.** `npx @konsulto/mcp login <kon_mcp_token>
+  [--endpoint <url>]` writes `~/.konsulto/credentials` (dir 0700, file 0600)
+  with one cross-platform command — no shell-specific mkdir/here-doc/chmod.
+  Validates the token prefix before writing (rejects `kon_live_*` tenant keys),
+  omits the endpoint line when it matches the default, and refuses to clobber
+  an existing file without `--force`.
 - **`konsulto_list_finding_statuses` tool.** Lists the tenant's finding-status
   catalog (key, label, semantic, isDefault, system; archived omitted) so the
   agent uses real status keys. Statuses are tenant-customizable.
